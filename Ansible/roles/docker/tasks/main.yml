@@ -1,0 +1,48 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install Docker
+  apt:
+    name: docker.io
+    state: present
+
+- name: Enable and start Docker
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Add ubuntu user to docker group
+  user:
+    name: ubuntu
+    groups: docker
+    append: yes
+
+- name: Add jenkins user to docker group
+  user:
+    name: jenkins
+    groups: docker
+    append: yes
+
+- name: Restart Docker
+  systemd:
+    name: docker
+    state: restarted
+
+- name: Install Docker Scout plugin
+  shell: |
+    curl -fsSL https://raw.githubusercontent.com/docker/scout-cli/main/install.sh | sh
+  args:
+    creates: /usr/local/bin/docker-scout
+
+- name: Verify Docker installation
+  command: docker --version
+  register: docker_ver
+  changed_when: false
+
+- name: Display Docker version
+  debug:
+    msg: "{{ docker_ver.stdout }}"
+

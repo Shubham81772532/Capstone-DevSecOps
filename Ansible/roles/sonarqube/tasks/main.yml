@@ -1,0 +1,66 @@
+
+---
+- name: Set vm.max_map_count (required by SonarQube Elasticsearch)
+  sysctl:
+    name: vm.max_map_count
+    value: "524288"
+    state: present
+    reload: yes
+
+- name: Set fs.file-max
+  sysctl:
+    name: fs.file-max
+    value: "131072"
+    state: present
+    reload: yes
+
+- name: Create SonarQube directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - /opt/sonarqube
+    - /opt/sonarqube/data
+    - /opt/sonarqube/logs
+    - /opt/sonarqube/extensions
+
+- name: Pull SonarQube Docker image
+  command: docker pull sonarqube:lts-community
+  changed_when: false
+
+- name: Check if SonarQube container exists
+  command: docker ps -a --filter "name=sonarqube" --format "{{'{{'}}.Names{{'}}'}}"
+  register: sonar_container
+  changed_when: false
+
+- name: Run SonarQube container
+  command: >
+    docker run -d
+    --name sonarqube
+    --restart unless-stopped
+    -p 9000:9000
+    -v /opt/sonarqube/data:/opt/sonarqube/data
+    -v /opt/sonarqube/logs:/opt/sonarqube/logs
+    -v /opt/sonarqube/extensions:/opt/sonarqube/extensions
+    sonarqube:lts-community
+  when: sonar_container.stdout == ""
+
+- name: Wait for SonarQube to start
+  wait_for:
+    host: localhost
+    port: 9000
+    delay: 30
+    timeout: 300
+
+- name: Display SonarQube URL
+  debug:
+    msg: |
+      ============================================================
+      SonarQube URL : http://{{ ansible_host }}:9000
+      Username      : admin
+      Password      : admin
+
+      Change the password after first login.
+      ============================================================
+

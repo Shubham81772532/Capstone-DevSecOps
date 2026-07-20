@@ -1,0 +1,11 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+node_modules/
+build/
+.DS_Store
+*.pem
+.vscode/
+.idea/
+Ansible/inventory.ini

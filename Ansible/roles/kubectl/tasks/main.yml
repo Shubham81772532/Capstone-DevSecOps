@@ -1,0 +1,26 @@
+---
+- name: Check if kubectl already installed
+  stat:
+    path: /usr/local/bin/kubectl
+  register: kubectl_bin
+
+- name: Download kubectl v1.33
+  get_url:
+    url: https://dl.k8s.io/release/v1.33.0/bin/linux/amd64/kubectl
+    dest: /usr/local/bin/kubectl
+    mode: '0755'
+  when: not kubectl_bin.stat.exists
+
+- name: Ensure kubectl executable
+  file:
+    path: /usr/local/bin/kubectl
+    mode: '0755'
+
+- name: Verify kubectl
+  command: kubectl version --client
+  register: kubectl_ver
+  changed_when: false
+
+- name: Show kubectl version
+  debug:
+    msg: "{{ kubectl_ver.stdout }}"

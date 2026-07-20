@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hotstar
+  namespace: default
+  labels:
+    app: hotstar
+    version: "{{ .Values.image.tag }}"
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: hotstar
+  template:
+    metadata:
+      labels:
+        app: hotstar
+        version: "{{ .Values.image.tag }}"
+    spec:
+      containers:
+      - name: hotstar
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.containerPort }}
+          protocol: TCP
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        livenessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.containerPort }}
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        readinessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.containerPort }}
+          initialDelaySeconds: 5
+          periodSeconds: 10

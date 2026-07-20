@@ -1,0 +1,56 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: hotstar-alert-rules
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: hotstar.rules
+      rules:
+
+      - alert: HighCPUUsage
+        expr: (100 - (avg by(instance)(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 80
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU Usage"
+          description: "CPU usage is above 80%."
+
+      - alert: HighMemoryUsage
+        expr: ((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes) * 100 > 80
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High Memory Usage"
+          description: "Memory usage is above 80%."
+
+      - alert: PodRestarting
+        expr: increase(kube_pod_container_status_restarts_total[5m]) > 0s
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pod Restart"
+          description: "A pod restarted."
+
+      - alert: PodDown
+        expr: kube_pod_status_ready{condition="true"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Pod Down"
+          description: "Pod is not Ready."
+
+      - alert: NodeDown
+        expr: up{job="node-exporter"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Node Down"
+          description: "A Kubernetes node is unreachable."

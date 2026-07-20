@@ -1,0 +1,66 @@
+
+---
+- name: Install required packages
+  apt:
+    name:
+      - curl
+      - gnupg
+      - ca-certificates
+    state: present
+    update_cache: yes
+
+- name: Create APT keyrings directory
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Download Jenkins GPG key
+  get_url:
+    url: https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
+    dest: /etc/apt/keyrings/jenkins-keyring.asc
+    mode: "0644"
+
+- name: Add Jenkins repository
+  apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/"
+    filename: jenkins
+    state: present
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install Jenkins
+  apt:
+    name: jenkins
+    state: present
+
+- name: Enable Jenkins service
+  systemd:
+    name: jenkins
+    enabled: yes
+    state: started
+
+- name: Wait for Jenkins to start
+  wait_for:
+    host: localhost
+    port: 8080
+    delay: 20
+    timeout: 180
+
+- name: Get Jenkins initial admin password
+  command: cat /var/lib/jenkins/secrets/initialAdminPassword
+  register: jenkins_password
+  changed_when: false
+
+- name: Display Jenkins information
+  debug:
+    msg: |
+      =====================================================
+      Jenkins URL : http://{{ ansible_host }}:8080
+      Username    : admin
+      Initial Password:
+      {{ jenkins_password.stdout }}
+      =====================================================
+
