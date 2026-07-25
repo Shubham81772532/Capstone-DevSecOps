@@ -25,6 +25,13 @@
     - /opt/sonarqube/logs
     - /opt/sonarqube/extensions
 
+- name: Set ownership for SonarQube directories
+  file:
+    path: /opt/sonarqube
+    owner: "1000"
+    group: "1000"
+    recurse: yes
+
 - name: Pull SonarQube Docker image
   command: docker pull sonarqube:lts-community
   changed_when: false
