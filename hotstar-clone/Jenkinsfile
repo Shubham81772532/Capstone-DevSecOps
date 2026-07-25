@@ -5,14 +5,8 @@ pipeline {
     tools {
         nodejs 'nodejs'
     }
+
     
-    stages {
-        stage('Test') {
-            steps {
-                sh 'node -v'
-                sh 'npm -v'
-            }
-        }
 
     environment {
         IMAGE_NAME  = "shubhamnavale8177/hotstar"
@@ -30,6 +24,13 @@ pipeline {
     }
 
     stages {
+
+        stage('Test') {
+            steps {
+                sh 'node -v'
+                sh 'npm -v'
+            }
+        }
 
         stage('Checkout') {
             steps {
