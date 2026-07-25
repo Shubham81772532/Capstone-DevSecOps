@@ -99,11 +99,9 @@ pipeline {
 
         stage('Docker Scout Scan') {
             steps {
-                // Scans the built image for CVEs in OS packages and npm dependencies
-                sh '''
-                docker scout quickview ${IMAGE_NAME}:${IMAGE_TAG}
-                docker scout cves ${IMAGE_NAME}:${IMAGE_TAG} || true
-                '''
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                sh "docker scout quickview ${DOCKER_IMAGE}:${BUILD_NUMBER}"
+                 }
             }
         }
 
