@@ -3,8 +3,16 @@ pipeline {
     agent any
 
     tools {
-        nodejs 'NodeJS 26.5.0'
+        nodejs 'nodejs'
     }
+    
+    stages {
+        stage('Test') {
+            steps {
+                sh 'node -v'
+                sh 'npm -v'
+            }
+        }
 
     environment {
         IMAGE_NAME  = "shubhamnavale8177/hotstar"
