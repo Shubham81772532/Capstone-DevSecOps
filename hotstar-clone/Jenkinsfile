@@ -59,21 +59,22 @@ pipeline {
         }
 
         stage('SonarQube Scan') {
-            steps {
-                // SonarQube runs as Docker container on same EC2 (installed by Ansible)
-                // Jenkins config: Manage Jenkins → Configure System → SonarQube servers
-                //   Name: sonarqube   URL: http://localhost:9000
-                withSonarQubeEnv('sonarqube') {
-                    sh '''
-                    sonar-scanner \
-                      -Dsonar.projectKey=hotstar \
-                      -Dsonar.projectName="Hotstar Clone" \
-                      -Dsonar.sources=hotstar-clone/src \
-                      -Dsonar.host.url=${SONAR_HOST}
-                    '''
+         steps {
+             script {
+            // Use SonarScanner installed by Jenkins
+                def scannerHome = tool 'sonar-scanner'
+
+            withSonarQubeEnv('sonarqube') {
+                sh """
+                ${scannerHome}/bin/sonar-scanner \
+                  -Dsonar.projectKey=hotstar \
+                  -Dsonar.projectName="Hotstar Clone" \
+                  -Dsonar.sources=hotstar-clone/src
+                """
+                    }
+                 }
                 }
             }
-        }
 
         stage('Quality Gate') {
             steps {
