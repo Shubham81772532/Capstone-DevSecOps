@@ -3,7 +3,7 @@ pipeline {
     agent any
 
     tools {
-        nodejs 'node18'
+        nodejs 'NodeJS 26.5.0'
     }
 
     environment {
@@ -257,7 +257,7 @@ pipeline {
             }
         }
 
-        sstage('Configure Alertmanager') {
+        stage('Configure Alertmanager') {
             steps {
             withCredentials([
                 string(
