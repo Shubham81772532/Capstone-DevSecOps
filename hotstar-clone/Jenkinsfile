@@ -258,7 +258,7 @@ pipeline {
               prometheus-community/kube-prometheus-stack \
               --namespace monitoring \
               --create-namespace \
-              --values monitoring/values-monitoring.yaml \
+              --values hotstar-clone/monitoring/values-monitoring.yaml \
               --wait \
               --timeout 10m
             '''
@@ -270,7 +270,7 @@ pipeline {
              sh '''
             echo "Deploying Prometheus Alert Rules..."
 
-            kubectl apply -f monitoring/alert-rules.yaml
+            kubectl apply -f hotstar-clone/monitoring/alert-rules.yaml
 
             echo ""
             echo "===== Prometheus Rules ====="
@@ -306,7 +306,7 @@ pipeline {
             )
             ]) {
             sh '''
-            envsubst < monitoring/alertmanager-config.yaml > /tmp/alertmanager-config.yaml
+            envsubst < hotstar-clone/monitoring/alertmanager-config.yaml > /tmp/alertmanager-config.yaml
 
             kubectl apply -f /tmp/alertmanager-config.yaml
 
