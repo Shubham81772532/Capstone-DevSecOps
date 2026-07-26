@@ -272,25 +272,25 @@ pipeline {
         }
 
         stage('Configure Alertmanager') {
-            steps {
-            withCredentials([
-                string(
-                    credentialsId: 'slack-webhook-url',
-                    variable: 'SLACK_WEBHOOK_URL'
-                    )
-                ]) {
+        steps {
+             withCredentials([
+             string(
+                credentialsId: 'slack-webhook-url',
+                variable: 'SLACK_WEBHOOK_URL'
+            )
+            ]) {
             sh '''
             envsubst < monitoring/alertmanager-config.yaml > /tmp/alertmanager-config.yaml
 
             kubectl apply -f /tmp/alertmanager-config.yaml
 
-            kubectl rollout restart statefulset monitoring-kube-prometheus-alertmanager -n monitoring
+            kubectl rollout restart statefulset alertmanager-monitoring-kube-prometheus-alertmanager -n monitoring || true
 
-            kubectl rollout status statefulset monitoring-kube-prometheus-alertmanager -n monitoring
+            kubectl rollout status statefulset alertmanager-monitoring-kube-prometheus-alertmanager -n monitoring --timeout=300s
             '''
-        }
-    }
-}
+              }
+             }
+         }
 
         stage('Verify Deployment') {
             steps {
