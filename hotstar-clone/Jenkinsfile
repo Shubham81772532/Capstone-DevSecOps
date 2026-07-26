@@ -106,45 +106,49 @@ pipeline {
         }
 
         stage('OWASP ZAP Scan') {
-            steps {
-                sh '''
-                # Start the app container so ZAP has a live HTTP target
-                docker run -d \
-                  --name hotstar-zap-target \
-                  -p 8090:80 \
-                  ${IMAGE_NAME}:${IMAGE_TAG}
+         steps {
+            sh '''
+            # Start the application container
+            docker run -d \
+            --name hotstar-zap-target \
+           -p 8090:80 \
+           ${IMAGE_NAME}:${IMAGE_TAG}
 
-                sleep 8
+            sleep 10
 
-                mkdir -p zap-reports
+            # Create report directory
+            mkdir -p ${WORKSPACE}/zap-reports
+            chmod 777 ${WORKSPACE}/zap-reports
 
-                # ZAP baseline scan against the running container
-                docker run --rm \
-                  --network host \
-                  -v $(pwd)/zap-reports:/zap/wrk/:rw \
-                  ghcr.io/zaproxy/zaproxy:stable \
-                  zap-baseline.py \
-                  -t http://localhost:8090 \
-                  -r zap-report.html \
-                  -I
+            # Run ZAP Baseline Scan
+            docker run --rm \
+          --user root \
+          --network host \
+          -v ${WORKSPACE}/zap-reports:/zap/wrk \
+          ghcr.io/zaproxy/zaproxy:stable \
+          zap-baseline.py \
+          -t http://localhost:8090 \
+          -r zap-report.html \
+          -I
 
-                docker stop hotstar-zap-target
-                docker rm hotstar-zap-target
-                '''
-            }
-            post {
-                always {
-                    publishHTML(target: [
-                        allowMissing         : true,
-                        alwaysLinkToLastBuild: true,
-                        keepAll              : true,
-                        reportDir            : 'zap-reports',
-                        reportFiles          : 'zap-report.html',
-                        reportName           : 'OWASP ZAP Report'
-                    ])
-                }
-            }
+            docker stop hotstar-zap-target
+            docker rm hotstar-zap-target
+            '''
         }
+
+        post {
+             always {
+              publishHTML(target: [
+                allowMissing: true,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: 'zap-reports',
+                reportFiles: 'zap-report.html',
+                reportName: 'OWASP ZAP Report'
+              ])
+             }
+           }
+         }
 
         stage('Docker Push') {
             steps {
