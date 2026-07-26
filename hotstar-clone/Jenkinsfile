@@ -205,28 +205,29 @@ pipeline {
         }
 
         stage('Create Grafana Secret') {
-             steps {
-             withCredentials([
-             string(
+        steps {
+            withCredentials([
+            string(
                 credentialsId: 'grafana-admin-password',
                 variable: 'GRAFANA_PASSWORD'
-                     )
-                 ]) {
-                sh '''
-                 kubectl create namespace monitoring \
-                 --dry-run=client -o yaml | kubectl apply -f -
+            )
+             ]) {
+            sh '''
+            kubectl create namespace monitoring \
+              --dry-run=client -o yaml | kubectl apply -f -
 
-                kubectl create secret generic grafana-admin \
-                --namespace monitoring \
-                --from-literal=admin-password="$GRAFANA_PASSWORD" \
-                --dry-run=client -o yaml | kubectl apply -f -
+            kubectl create secret generic grafana-admin \
+              --namespace monitoring \
+              --from-literal=admin-user=admin \
+              --from-literal=admin-password="$GRAFANA_PASSWORD" \
+              --dry-run=client -o yaml | kubectl apply -f -
 
-                echo "Grafana Secret Created Successfully"
+            echo "Grafana Secret Created Successfully"
 
-                kubectl get secret grafana-admin -n monitoring
-                '''
-              }
-          }
+            kubectl describe secret grafana-admin -n monitoring
+             '''
+             }
+             }
         }
         stage('Debug Workspace') {
             steps {
