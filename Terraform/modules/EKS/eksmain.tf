@@ -8,9 +8,22 @@ module "eks" {
   vpc_id     = var.vpc_id
   subnet_ids = var.subnet_ids
 
-endpoint_public_access  = true
-endpoint_private_access = false
+  endpoint_public_access  = true
+  endpoint_private_access = false
 
+  cluster_addons = {
+    coredns = {
+      most_recent = true
+    }
+
+    kube-proxy = {
+      most_recent = true
+    }
+
+    vpc-cni = {
+      most_recent = true
+    }
+  }
 
   eks_managed_node_groups = {
     hotstar_nodes = {
