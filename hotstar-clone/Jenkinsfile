@@ -228,6 +228,23 @@ pipeline {
               }
           }
         }
+        stage('Debug Workspace') {
+            steps {
+            sh '''
+            echo "PWD:"
+             pwd
+
+            echo "Workspace:"
+            ls -la
+
+            echo "Find monitoring:"
+            find . -name values-monitoring.yaml
+
+            echo "Find helm:"
+            find . -name Chart.yaml
+            '''
+             }
+        }
 
         stage('Install Monitoring') {
             steps {
