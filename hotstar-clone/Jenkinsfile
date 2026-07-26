@@ -183,16 +183,25 @@ pipeline {
         }
 
         stage('Configure EKS') {
-            steps {
-                // EC2 IAM role (attached by Terraform) allows this without static AWS keys
-                sh '''
-                aws eks update-kubeconfig \
-                  --region ${AWS_REGION} \
-                  --name ${EKS_CLUSTER}
+        steps {
+         withCredentials([
+            [$class: 'AmazonWebServicesCredentialsBinding',
+             credentialsId: 'aws-creds']
+                ]) {
+            sh '''
+            echo "Verifying AWS Credentials..."
+            aws sts get-caller-identity
 
-                kubectl get nodes
-                '''
-            }
+            echo "Updating kubeconfig..."
+            aws eks update-kubeconfig \
+              --region ${AWS_REGION} \
+              --name ${EKS_CLUSTER}
+
+            echo "Checking Kubernetes Cluster..."
+            kubectl get nodes
+             '''
+             }
+          }
         }
 
         stage('Create Grafana Secret') {
