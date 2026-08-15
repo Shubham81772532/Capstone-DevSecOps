@@ -1,6 +1,6 @@
 ---
 - name: Setup Jenkins EC2 with DevSecOps Tools
-  hosts: ubuntu
+  hosts: jenkins
   become: yes
 
   roles:
