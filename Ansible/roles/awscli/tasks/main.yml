@@ -42,3 +42,57 @@
   debug:
     msg: "{{ aws_ver.stdout }}"
 
+# ---
+# - name: Update apt cache
+#   apt:
+#     update_cache: yes
+
+# - name: Install required packages
+#   apt:
+#     name:
+#       - unzip
+#       - curl
+#     state: present
+
+# - name: Remove old AWS CLI installation
+#   file:
+#     path: "{{ item }}"
+#     state: absent
+#   loop:
+#     - /usr/local/aws-cli
+#     - /usr/local/bin/aws
+#     - /usr/local/bin/aws_completer
+
+# - name: Set AWS CLI download URL
+#   set_fact:
+#     aws_cli_url: >-
+#       {{
+#         'https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip'
+#         if ansible_architecture == 'aarch64'
+#         else
+#         'https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip'
+#       }}
+
+# - name: Download AWS CLI v2
+#   get_url:
+#     url: "{{ aws_cli_url }}"
+#     dest: /tmp/awscliv2.zip
+#     mode: "0644"
+
+# - name: Extract AWS CLI
+#   unarchive:
+#     src: /tmp/awscliv2.zip
+#     dest: /tmp
+#     remote_src: yes
+
+# - name: Install AWS CLI
+#   command: /tmp/aws/install --update
+
+# - name: Verify AWS CLI
+#   command: /usr/local/bin/aws --version
+#   register: aws_ver
+#   changed_when: false
+
+# - name: Display AWS CLI version
+#   debug:
+#     var: aws_ver.stdout

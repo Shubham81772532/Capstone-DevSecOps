@@ -1,0 +1,35 @@
+---
+- name: Add ArgoCD Helm Repository
+  shell: |
+    helm repo add argo https://argoproj.github.io/argo-helm
+
+- name: Update Helm Repository
+  shell: |
+    helm repo update
+
+- name: Install ArgoCD
+  shell: |
+    helm upgrade --install argocd argo/argo-cd \
+      --namespace argocd \
+      --create-namespace \
+      --wait \
+      --timeout 10m
+
+- name: Verify ArgoCD Pods
+  shell: |
+    kubectl get pods -n argocd
+
+- name: Verify ArgoCD Service
+  shell: |
+    kubectl get svc -n argocd
+
+- name: Get Initial Admin Password
+  shell: |
+    kubectl get secret argocd-initial-admin-secret \
+    -n argocd \
+    -o jsonpath="{.data.password}" | base64 -d
+  register: argocd_password
+
+- name: Display Password
+  debug:
+    msg: "{{ argocd_password.stdout }}"

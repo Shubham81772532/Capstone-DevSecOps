@@ -1,13 +1,22 @@
 ---
-- name: Setup Jenkins EC2 with all DevSecOps tools
-  hosts: jenkins
+- name: Setup Jenkins EC2 with DevSecOps Tools
+  hosts: ubuntu
   become: yes
 
   roles:
-    - java        # Must be first — Jenkins depends on Java
-    - jenkins     # Creates jenkins user and starts service
-    - docker      # Adds jenkins user to docker group + installs Docker Scout
-    - sonarqube   # Runs SonarQube as Docker container on port 9000
-    - awscli      # AWS CLI v2 for EKS access
-    - kubectl     # kubectl v1.33 matching EKS version
-    - helm        # Helm 3 for deploying to EKS
+    - { role: java,            tags: ["java"] }
+    - { role: docker,          tags: ["docker"] }
+    - { role: jenkins,         tags: ["jenkins"] }
+    - { role: sonarqube,       tags: ["sonarqube"] }
+    - { role: awscli,          tags: ["awscli"] }
+    - { role: kubectl,         tags: ["kubectl"] }
+    - { role: helm,            tags: ["helm"] }
+
+    # Kubernetes Components
+    - { role: ingress-nginx,   tags: ["ingress"] }
+    - { role: metrics-server,  tags: ["metrics"] }
+    - { role: monitoring,      tags: ["monitoring"] }
+    - { role: argocd,          tags: ["argocd"] }
+
+    # Verification
+    - { role: verify,          tags: ["verify"] }

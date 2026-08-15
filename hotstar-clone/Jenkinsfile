@@ -1,3 +1,7 @@
+// Hotstar Clone — CI/CD Pipeline
+// Jenkins does CI (build, test, scan, push image, update Helm values).
+// ArgoCD watches the Git repo and does CD (deploys to Kubernetes) on its own.
+
 pipeline {
 
     agent any
@@ -6,428 +10,220 @@ pipeline {
         nodejs 'nodejs'
     }
 
-    
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        timeout(time: 45, unit: 'MINUTES')
+    }
 
     environment {
-        IMAGE_NAME  = "shubhamnavale8177/hotstar"
+        APP_DIR     = 'hotstar-clone'
+        HELM_DIR    = 'hotstar-clone/helm'
+        IMAGE_NAME  = 'shubhamnavale8177/hotstar'
         IMAGE_TAG   = "${BUILD_NUMBER}"
-        AWS_REGION  = "us-east-1"
-        EKS_CLUSTER = "hotstar-eks"
-        SONAR_HOST  = "http://localhost:9000"
+        AWS_REGION  = 'us-east-1'
+        EKS_CLUSTER = 'hotstar-eks'
     }
 
     triggers {
-        // GitHub webhook: every push to main triggers this pipeline automatically
-        // Setup: Jenkins job → Configure → Build Triggers → GitHub hook trigger for GITScm polling
-        // GitHub repo → Settings → Webhooks → http://<EC2_IP>:8080/github-webhook/
         githubPush()
     }
 
     stages {
 
-        stage('Test') {
-            steps {
-                sh 'node -v'
-                sh 'npm -v'
-            }
-        }
+        // ---------- PHASE 1: BUILD & TEST ----------
 
         stage('Checkout') {
             steps {
-                // Pulls latest code from GitHub on every push
                 checkout scm
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                dir('hotstar-clone') {
-                    sh 'npm install'
+                dir(env.APP_DIR) {
+                    sh 'npm ci'
                 }
             }
         }
 
         stage('Build React App') {
             steps {
-                dir('hotstar-clone') {
-                    // Produces hotstar-clone/build/ folder used by Dockerfile
-                    sh '''
-                    CI=false npm run build
-                    '''
+                dir(env.APP_DIR) {
+                    sh 'CI=false npm run build'
                 }
             }
         }
 
-        stage('SonarQube Scan') {
-         steps {
-             script {
-            // Use SonarScanner installed by Jenkins
-                def scannerHome = tool 'sonar-scanner'
-
-            withSonarQubeEnv('sonarqube') {
-                sh """
-                ${scannerHome}/bin/sonar-scanner \
-                  -Dsonar.projectKey=hotstar \
-                  -Dsonar.projectName="Hotstar Clone" \
-                  -Dsonar.sources=hotstar-clone/src
-                """
-                    }
-                 }
+        stage('Unit Tests') {
+            steps {
+                dir(env.APP_DIR) {
+                    sh 'CI=true npm test -- --watchAll=false --passWithNoTests'
                 }
             }
+        }
+
+        // ---------- PHASE 2: SECURE ----------
+
+        stage('SonarQube Scan') {
+            steps {
+                script {
+                    def scannerHome = tool 'sonar-scanner'
+                    withSonarQubeEnv('sonarqube') {
+                        sh "${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=hotstar -Dsonar.sources=${APP_DIR}/src"
+                    }
+                }
+            }
+        }
 
         stage('Quality Gate') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
-                waitForQualityGate abortPipeline: true
-             }
-           }
-        }
-
-
-        stage('Docker Build') {
-            steps {
-                // Build context = hotstar-clone/ so COPY paths in Dockerfile work correctly
-                sh '''
-                docker build \
-                  -f hotstar-clone/Dockerfile \
-                  -t ${IMAGE_NAME}:${IMAGE_TAG} \
-                  hotstar-clone/
-                '''
-            }
-        }
-
-        stage('Docker Scout Scan') {
-            steps {
-                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                sh "docker scout quickview ${DOCKER_IMAGE}:${BUILD_NUMBER}"
-                 }
-            }
-        }
-
-        stage('OWASP ZAP Scan') {
-         steps {
-            sh '''
-            # Start the application container
-            docker run -d \
-            --name hotstar-zap-target \
-           -p 8090:80 \
-           ${IMAGE_NAME}:${IMAGE_TAG}
-
-            sleep 10
-
-            # Create report directory
-            mkdir -p ${WORKSPACE}/zap-reports
-            chmod 777 ${WORKSPACE}/zap-reports
-
-            # Run ZAP Baseline Scan
-            docker run --rm \
-          --user root \
-          --network host \
-          -v ${WORKSPACE}/zap-reports:/zap/wrk \
-          ghcr.io/zaproxy/zaproxy:stable \
-          zap-baseline.py \
-          -t http://localhost:8090 \
-          -r zap-report.html \
-          -I
-
-            docker stop hotstar-zap-target
-            docker rm hotstar-zap-target
-            '''
-        }
-
-        post {
-             always {
-              publishHTML(target: [
-                allowMissing: true,
-                alwaysLinkToLastBuild: true,
-                keepAll: true,
-                reportDir: 'zap-reports',
-                reportFiles: 'zap-report.html',
-                reportName: 'OWASP ZAP Report'
-              ])
-             }
-           }
-         }
-
-        stage('Docker Push') {
-            steps {
-                // dockerhub-creds = Jenkins credential (Docker Hub username + access token)
-                // Add via: Manage Jenkins → Credentials → Global → Add Credentials
-                //   Kind: Username with password
-                //   Username: your Docker Hub username
-                //   Password: Docker Hub access token (NOT login password)
-                //   ID: dockerhub-creds
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'dockerhub-creds',
-                        usernameVariable: 'DOCKER_USER',
-                        passwordVariable: 'DOCKER_PASS'
-                    )
-                ]) {
-                    sh '''
-                    echo $DOCKER_PASS | docker login \
-                      -u $DOCKER_USER \
-                      --password-stdin
-
-                    docker push ${IMAGE_NAME}:${IMAGE_TAG}
-
-                    # Also tag and push as latest
-                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
-                    docker push ${IMAGE_NAME}:latest
-
-                    docker logout
-                    '''
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
 
-        stage('Configure EKS') {
-        steps {
-         withCredentials([
-            [$class: 'AmazonWebServicesCredentialsBinding',
-             credentialsId: 'aws-creds']
-                ]) {
-            sh '''
-            echo "Verifying AWS Credentials..."
-            aws sts get-caller-identity
-
-            echo "Updating kubeconfig..."
-            aws eks update-kubeconfig \
-              --region ${AWS_REGION} \
-              --name ${EKS_CLUSTER}
-
-            echo "Checking Kubernetes Cluster..."
-            kubectl get nodes
-             '''
-             }
-          }
-        }
-
-        stage('Create Grafana Secret') {
-        steps {
-            withCredentials([
-            string(
-                credentialsId: 'grafana-admin-password',
-                variable: 'GRAFANA_PASSWORD'
-            )
-             ]) {
-            sh '''
-            kubectl create namespace monitoring \
-              --dry-run=client -o yaml | kubectl apply -f -
-
-            kubectl create secret generic grafana-admin \
-              --namespace monitoring \
-              --from-literal=admin-user=admin \
-              --from-literal=admin-password="$GRAFANA_PASSWORD" \
-              --dry-run=client -o yaml | kubectl apply -f -
-
-            echo "Grafana Secret Created Successfully"
-
-            kubectl describe secret grafana-admin -n monitoring
-             '''
-             }
-             }
-        }
-        stage('Debug Workspace') {
+        stage('Trivy FS Scan') {
             steps {
-            sh '''
-            echo "PWD:"
-             pwd
-
-            echo "Workspace:"
-            ls -la
-
-            echo "Find monitoring:"
-            find . -name values-monitoring.yaml
-
-            echo "Find helm:"
-            find . -name Chart.yaml
-            '''
-             }
-        }
-
-        stage('Install Monitoring') {
-            steps {
-            sh '''
-            helm repo add prometheus-community \
-              https://prometheus-community.github.io/helm-charts || true
-
-            helm repo update
-
-            helm upgrade --install monitoring \
-              prometheus-community/kube-prometheus-stack \
-              --namespace monitoring \
-              --create-namespace \
-              --values hotstar-clone/monitoring/values-monitoring.yaml \
-              --wait \
-              --timeout 10m
-            '''
-              }
-        }
-
-        stage('Deploy Alert Rules') {
-             steps {
-             sh '''
-            echo "Deploying Prometheus Alert Rules..."
-
-            kubectl apply -f hotstar-clone/monitoring/alert-rules.yaml
-
-            echo ""
-            echo "===== Prometheus Rules ====="
-            kubectl get prometheusrules -n monitoring
-
-            echo ""
-            echo "===== Rule Details ====="
-            kubectl describe prometheusrule hotstar-alert-rules -n monitoring
-            '''
+                sh """
+                    mkdir -p trivy-reports
+                    trivy fs --severity CRITICAL,HIGH -o trivy-reports/fs-report.txt ${APP_DIR}
+                """
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'trivy-reports/fs-report.txt', allowEmptyArchive: true
+                }
             }
         }
-        
-        stage('Deploy Hotstar') {
+
+        stage('Docker Build') {
             steps {
+                sh "docker build -f ${APP_DIR}/Dockerfile -t ${IMAGE_NAME}:${IMAGE_TAG} ${APP_DIR}/"
+            }
+        }
+
+        stage('Trivy Image Scan') {
+            steps {
+                sh """
+                    mkdir -p trivy-reports
+                    trivy image --severity CRITICAL,HIGH -o trivy-reports/image-report.txt ${IMAGE_NAME}:${IMAGE_TAG}
+                """
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'trivy-reports/image-report.txt', allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('OWASP ZAP Scan') {
+            steps {
+                sh """
+                    docker run -d --name zap-target -p 8090:80 ${IMAGE_NAME}:${IMAGE_TAG}
+                    sleep 15
+                    mkdir -p ${WORKSPACE}/zap-reports
+                    chmod 777 ${WORKSPACE}/zap-reports
+                    docker run --rm --network host -v ${WORKSPACE}/zap-reports:/zap/wrk \
+                      ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://localhost:8090 -r zap-report.html -I
+                """
+            }
+            post {
+                always {
+                    sh 'docker stop zap-target || true'
+                    sh 'docker rm zap-target || true'
+                    publishHTML(target: [
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'zap-reports',
+                        reportFiles: 'zap-report.html',
+                        reportName: 'OWASP ZAP Report'
+                    ])
+                }
+            }
+        }
+
+        // ---------- PHASE 3: SHIP ----------
+
+        stage('Docker Push') {
+            steps {
+                retry(2) {
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh '''
+                            echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                            docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                            docker tag  ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
+                            docker push ${IMAGE_NAME}:latest
+                            docker logout
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Update Helm & Push to Git') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'github-creds', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
+                    // yq edits the YAML structurally instead of text-replacing a line,
+                    // so it can't accidentally corrupt values.yaml's formatting.
+                    sh """
+                        yq -i '.image.tag = "${IMAGE_TAG}"' ${HELM_DIR}/values.yaml
+                        git config user.email "jenkins-bot@hotstar.local"
+                        git config user.name "jenkins-bot"
+                        git add ${HELM_DIR}/values.yaml
+                        git commit -m "Update image tag to ${IMAGE_TAG} [skip ci]" || echo "Nothing to commit"
+                    """
+                    // fetch + rebase first in case another build pushed to main
+                    // in between our checkout and now
+                    retry(3) {
+                        sh """
+                            git fetch origin main
+                            git rebase origin/main
+                            git push https://\$GIT_USER:\$GIT_TOKEN@github.com/Shubham81772532/Capstone-DevSecOps.git HEAD:main
+                        """
+                    }
+                }
+            }
+        }
+
+        // ---------- PHASE 4: DEPLOY (ArgoCD does the actual deploy) ----------
+
+        stage('Verify Deployment') {
+            steps {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+                    sh 'aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER}'
+                }
                 sh '''
-                helm upgrade --install hotstar \
-                  ./hotstar-clone/helm \
-                  --namespace default \
-                  --set image.repository=${IMAGE_NAME} \
-                  --set image.tag=${IMAGE_TAG} \
-                  --wait \
-                  --timeout 3m
+                    echo "Waiting for ArgoCD to pick up the change..."
+                    sleep 60
+                    kubectl rollout status deployment/hotstar -n default --timeout=120s
+                    kubectl get pods -n default
                 '''
             }
         }
 
-        stage('Configure Alertmanager') {
-        steps {
-             withCredentials([
-             string(
-                credentialsId: 'slack-webhook-url',
-                variable: 'SLACK_WEBHOOK_URL'
-            )
-            ]) {
-            sh '''
-            envsubst < hotstar-clone/monitoring/alertmanager-config.yaml > /tmp/alertmanager-config.yaml
-
-            kubectl apply -f /tmp/alertmanager-config.yaml
-
-            kubectl rollout restart statefulset alertmanager-monitoring-kube-prometheus-alertmanager -n monitoring || true
-
-            kubectl rollout status statefulset alertmanager-monitoring-kube-prometheus-alertmanager -n monitoring --timeout=300s
-            '''
-              }
-             }
-         }
-
-        stage('Verify Deployment') {
+        stage('Cleanup') {
             steps {
-            sh '''
-            echo "===================================="
-            echo " Kubernetes Cluster"
-            echo "===================================="
-            kubectl get nodes
-
-            echo ""
-            echo "===================================="
-            echo " Application Pods"
-            echo "===================================="
-            kubectl get pods -o wide
-
-            echo ""
-            echo "===================================="
-            echo " Services"
-            echo "===================================="
-            kubectl get svc
-
-            echo ""
-            echo "===================================="
-            echo " Ingress"
-            echo "===================================="
-            kubectl get ingress
-
-                echo ""
-            echo "===================================="
-            echo " Horizontal Pod Autoscaler"
-            echo "===================================="
-            kubectl get hpa
-
-            echo ""
-            echo "===================================="
-            echo " Monitoring Pods"
-            echo "===================================="
-            kubectl get pods -n monitoring
-
-            echo ""
-            echo "===================================="
-            echo " Monitoring Services"
-            echo "===================================="
-            kubectl get svc -n monitoring
-
-            echo ""
-            echo "===================================="
-            echo " Prometheus Rules"
-            echo "===================================="
-            kubectl get prometheusrules -n monitoring
-
-            echo ""
-            echo "===================================="
-            echo " Alertmanager"
-            echo "===================================="
-            kubectl get alertmanager -n monitoring
-
-            echo ""
-            echo "===================================="
-            echo " Grafana Service"
-            echo "===================================="
-            kubectl get svc monitoring-grafana -n monitoring
-
-            echo ""
-            echo "===================================="
-            echo " Application URL"
-            echo "===================================="
-            kubectl get ingress hotstar \
-             -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" \
-            2>/dev/null || echo "Ingress hostname not assigned yet"
-
-            echo ""
-            echo "===================================="
-            echo " Grafana URL"
-            echo "===================================="
-            kubectl get svc monitoring-grafana -n monitoring \
-              -o wide
-           '''
-          } 
+                sh '''
+                    docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true
+                    docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true
+                    docker rmi ${IMAGE_NAME}:latest || true
+                    docker image prune -f
+                '''
+            }
         }
     }
 
     post {
-
         success {
-            echo """
-            ============================================
-            Hotstar Deployment SUCCESSFUL
-            Build: ${BUILD_NUMBER}
-            Image: ${IMAGE_NAME}:${IMAGE_TAG}
-            ============================================
-            """
+            echo "Pipeline succeeded — ${IMAGE_NAME}:${IMAGE_TAG} deployed via ArgoCD."
         }
-
         failure {
-            echo """
-            ============================================
-            Hotstar Deployment FAILED
-            Build: ${BUILD_NUMBER}
-            Check the console output above for errors
-            ============================================
-            """
+            echo "Pipeline failed — check the console log above."
         }
-
         always {
-            // Clean up ZAP container if stage failed before docker stop ran
-            sh 'docker stop hotstar-zap-target 2>/dev/null || true'
-            sh 'docker rm   hotstar-zap-target 2>/dev/null || true'
-            // Remove local Docker images to free disk space on EC2
-            sh 'docker rmi ${IMAGE_NAME}:${IMAGE_TAG} 2>/dev/null || true'
             cleanWs()
         }
     }

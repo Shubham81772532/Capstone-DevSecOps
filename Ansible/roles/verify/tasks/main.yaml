@@ -1,0 +1,21 @@
+---
+- name: Verify Nodes
+  shell: kubectl get nodes
+
+- name: Verify Helm Releases
+  shell: helm list -A
+
+- name: Verify Monitoring Pods
+  shell: kubectl get pods -n monitoring
+
+- name: Verify ArgoCD Pods
+  shell: kubectl get pods -n argocd
+
+- name: Verify Ingress
+  shell: kubectl get ingress -A
+
+- name: Verify Application Pods
+  shell: kubectl get pods
+
+- name: Verify Services
+  shell: kubectl get svc
