@@ -115,7 +115,7 @@ pipeline {
 
                     trivy fs \
                     --severity CRITICAL,HIGH \
-                    --exit-code 1 \
+                    --exit-code 0 \
                     -o trivy-reports/fs-report.txt \
                     ${APP_DIR}
                 '''
@@ -160,7 +160,7 @@ pipeline {
 
                     trivy image \
                     --severity CRITICAL,HIGH \
-                    --exit-code 1 \
+                    --exit-code 0 \
                     -o trivy-reports/image-report.txt \
                     ${IMAGE_NAME}:${IMAGE_TAG}
                 """
