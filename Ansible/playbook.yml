@@ -11,6 +11,7 @@
     - { role: awscli,          tags: ["awscli"] }
     - { role: kubectl,         tags: ["kubectl"] }
     - { role: helm,            tags: ["helm"] }
+    - { role: npm,             tags: ["npm"] }
 
     # Kubernetes Components
     #- { role: ingress-nginx,   tags: ["ingress"] }

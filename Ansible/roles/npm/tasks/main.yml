@@ -1,0 +1,26 @@
+---
+- name: Install Node.js and npm
+  apt:
+    name:
+      - nodejs
+      - npm
+    state: present
+    update_cache: yes
+
+- name: Check Node.js version
+  command: node --version
+  register: node_version
+  changed_when: false
+
+- name: Display Node.js version
+  debug:
+    msg: "Node.js version: {{ node_version.stdout }}"
+
+- name: Check npm version
+  command: npm --version
+  register: npm_version
+  changed_when: false
+
+- name: Display npm version
+  debug:
+    msg: "npm version: {{ npm_version.stdout }}"
