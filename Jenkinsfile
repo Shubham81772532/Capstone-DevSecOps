@@ -298,8 +298,8 @@ pipeline {
                             git config user.email "jenkins-bot@hotstar.local"
                             git config user.name "jenkins-bot"
 
-                            # Update Helm image tag
-                            yq -i \
+                           # Update Helm image tag
+                            yq -y -i \
                             '.image.tag = strenv(IMAGE_TAG)' \
                             ${HELM_DIR}/values.yaml
 
