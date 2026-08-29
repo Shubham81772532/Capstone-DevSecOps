@@ -299,9 +299,10 @@ pipeline {
                             git config user.name "jenkins-bot"
 
                            # Update Helm image tag
-                             yq -y -i \
-                            '.image.tag = strenv(IMAGE_TAG)' \
-                            ${HELM_DIR}/values.yaml
+                             yq w -i \
+                              ${HELM_DIR}/values.yaml \
+                              image.tag \
+                              "${IMAGE_TAG}"
 
                             # Commit Helm change
                             git add ${HELM_DIR}/values.yaml
