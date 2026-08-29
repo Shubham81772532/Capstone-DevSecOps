@@ -1,7 +1,7 @@
 replicaCount: 2
 image:
   repository: shubhamnavale8177/hotstar
-  tag: 13
+  tag: 14
   pullPolicy: Always
 service:
   type: ClusterIP
