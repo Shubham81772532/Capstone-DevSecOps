@@ -13,10 +13,10 @@
     - { role: helm,            tags: ["helm"] }
 
     # Kubernetes Components
-    - { role: ingress-nginx,   tags: ["ingress"] }
-    - { role: metrics-server,  tags: ["metrics"] }
-    - { role: monitoring,      tags: ["monitoring"] }
-    - { role: argocd,          tags: ["argocd"] }
+    #- { role: ingress-nginx,   tags: ["ingress"] }
+    # - { role: metrics-server,  tags: ["metrics"] }
+    # - { role: monitoring,      tags: ["monitoring"] }
+    # - { role: argocd,          tags: ["argocd"] }
 
     # Verification
     - { role: verify,          tags: ["verify"] }

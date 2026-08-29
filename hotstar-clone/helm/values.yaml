@@ -2,7 +2,7 @@ replicaCount: 2
 
 image:
   repository: shubhamnavale8177/hotstar
-  tag: v1
+  tag: "1"
   pullPolicy: Always
 
 service:

@@ -1,21 +1,24 @@
 ---
-- name: Verify Nodes
-  shell: kubectl get nodes
+- name: Verify Java
+  shell: java -version
+  changed_when: false
 
-- name: Verify Helm Releases
-  shell: helm list -A
+- name: Verify Docker
+  shell: docker --version
+  changed_when: false
 
-- name: Verify Monitoring Pods
-  shell: kubectl get pods -n monitoring
+- name: Verify AWS CLI
+  shell: aws --version
+  changed_when: false
 
-- name: Verify ArgoCD Pods
-  shell: kubectl get pods -n argocd
+- name: Verify kubectl
+  shell: kubectl version --client
+  changed_when: false
 
-- name: Verify Ingress
-  shell: kubectl get ingress -A
+- name: Verify Helm
+  shell: helm version
+  changed_when: false
 
-- name: Verify Application Pods
-  shell: kubectl get pods
-
-- name: Verify Services
-  shell: kubectl get svc
+- name: Verify Jenkins
+  shell: systemctl is-active jenkins
+  changed_when: false
