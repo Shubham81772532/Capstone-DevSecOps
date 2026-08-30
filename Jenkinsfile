@@ -315,7 +315,7 @@ pipeline {
                 git fetch origin main
                 git checkout -B main origin/main
 
-                yq -i '.image.tag = strenv(IMAGE_TAG)' ${HELM_DIR}/values.yaml
+                yq -y -i ".image.tag = \"${IMAGE_TAG}\"" ${HELM_DIR}/values.yaml
 
                 echo "Updated values.yaml:"
                 cat ${HELM_DIR}/values.yaml
