@@ -11,6 +11,22 @@ module "eks" {
   endpoint_public_access  = true
   endpoint_private_access = false
 
+  authentication_mode = "API_AND_CONFIG_MAP"
+
+  addons = {
+    vpc-cni = {
+      most_recent = true
+    }
+
+    kube-proxy = {
+      most_recent = true
+    }
+
+    coredns = {
+      most_recent = true
+    }
+  }
+
   eks_managed_node_groups = {
     hotstar_nodes = {
       instance_types = var.eks_instance_types
