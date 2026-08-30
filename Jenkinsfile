@@ -29,6 +29,27 @@ pipeline {
 
     stages {
 
+         // =====================================================
+        // 0. SKIP CI GUARD
+        // =====================================================
+        // Stops the pipeline from re-triggering itself off its own
+        // GitOps commit (see stage 9). Jenkins does an implicit checkout
+        // of the repo before the pipeline body runs (Pipeline script
+        // from SCM), so `git log` already works here even before the
+        // explicit Checkout stage below.
+ 
+        stage('Skip CI Guard') {
+            steps {
+                script {
+                    def lastMsg = sh(script: 'git log -1 --pretty=%B', returnStdout: true).trim()
+                    if (lastMsg.contains('[skip ci]') || lastMsg.contains('[skip-ci]')) {
+                        currentBuild.result = 'NOT_BUILT'
+                        error("Skipping build — bot-generated GitOps commit: ${lastMsg}")
+                    }
+                }
+            }
+        }
+
         // =====================================================
         // 1. CHECKOUT
         // =====================================================
