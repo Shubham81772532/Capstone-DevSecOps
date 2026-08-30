@@ -275,51 +275,39 @@ pipeline {
         // =====================================================
 
         stage('Update Helm Image Tag') {
-          steps {
+         steps {
             withCredentials([
             usernamePassword(
                 credentialsId: 'github-creds',
                 usernameVariable: 'GIT_USER',
                 passwordVariable: 'GIT_TOKEN'
-                  )
-             ]) {
+                    )
+                 ]) {
             sh '''
                 set -e
 
                 echo "Updating Helm image tag to: ${IMAGE_TAG}"
 
-                # Configure Git
                 git config user.email "jenkins-bot@hotstar.local"
                 git config user.name "jenkins-bot"
 
-                # Get latest GitHub main
                 git fetch origin main
-
-                # Checkout latest main
                 git checkout -B main origin/main
 
-                # Update image tag
-                yq -i ".image.tag = \\"${IMAGE_TAG}\\"" ${HELM_DIR}/values.yaml
+                yq -i '.image.tag = strenv(IMAGE_TAG)' ${HELM_DIR}/values.yaml
 
                 echo "Updated values.yaml:"
                 cat ${HELM_DIR}/values.yaml
 
-                # Commit
                 git add ${HELM_DIR}/values.yaml
+                git commit -m "Update Hotstar image to ${IMAGE_TAG} [skip ci]" || echo "No changes to commit"
 
-                git commit \
-                    -m "Update Hotstar image to ${IMAGE_TAG} [skip ci]" \
-                    || echo "No changes to commit"
+                git push https://${GIT_USER}:${GIT_TOKEN}@github.com/Shubham81772532/Capstone-DevSecOps.git HEAD:main
+              '''
+               }
+              }
+            }
 
-                # Push
-                git push \
-                    https://${GIT_USER}:${GIT_TOKEN}@github.com/Shubham81772532/Capstone-DevSecOps.git \
-                    HEAD:main
-                '''
-                    }
-                }
-         }
-         
         // =====================================================
         // 10. CLEANUP
         // =====================================================
