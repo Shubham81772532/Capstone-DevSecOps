@@ -13,13 +13,13 @@ pipeline {
     }
 
     environment {
-        APP_DIR    = 'hotstar-clone'
-        HELM_DIR   = 'hotstar-clone/helm'
+        APP_DIR     = 'hotstar-clone'
+        HELM_DIR    = 'hotstar-clone/helm'
 
-        IMAGE_NAME = 'shubhamnavale8177/hotstar'
-        IMAGE_TAG  = "${BUILD_NUMBER}"
+        IMAGE_NAME  = 'shubhamnavale8177/hotstar'
+        IMAGE_TAG   = "${BUILD_NUMBER}"
 
-        AWS_REGION = 'us-east-1'
+        AWS_REGION  = 'us-east-1'
         EKS_CLUSTER = 'hotstar-eks'
     }
 
@@ -28,27 +28,6 @@ pipeline {
     }
 
     stages {
-
-         // =====================================================
-        // 0. SKIP CI GUARD
-        // =====================================================
-        // Stops the pipeline from re-triggering itself off its own
-        // GitOps commit (see stage 9). Jenkins does an implicit checkout
-        // of the repo before the pipeline body runs (Pipeline script
-        // from SCM), so `git log` already works here even before the
-        // explicit Checkout stage below.
- 
-        stage('Skip CI Guard') {
-            steps {
-                script {
-                    def lastMsg = sh(script: 'git log -1 --pretty=%B', returnStdout: true).trim()
-                    if (lastMsg.contains('[skip ci]') || lastMsg.contains('[skip-ci]')) {
-                        currentBuild.result = 'NOT_BUILT'
-                        error("Skipping build — bot-generated GitOps commit: ${lastMsg}")
-                    }
-                }
-            }
-        }
 
         // =====================================================
         // 1. CHECKOUT
@@ -61,7 +40,35 @@ pipeline {
         }
 
         // =====================================================
-        // 2. BUILD & TEST
+        // 2. CHECK NODE & NPM
+        // =====================================================
+
+        stage('Check Node and NPM') {
+            steps {
+                sh '''
+                    echo "=========================================="
+                    echo "NODE AND NPM ENVIRONMENT CHECK"
+                    echo "=========================================="
+
+                    echo "Node version:"
+                    node --version
+
+                    echo "NPM version:"
+                    npm --version
+
+                    echo "NPM registry:"
+                    npm config get registry
+
+                    echo "NPM ping:"
+                    npm ping
+
+                    echo "=========================================="
+                '''
+            }
+        }
+
+        // =====================================================
+        // 3. BUILD & TEST
         // =====================================================
 
         stage('Install Dependencies') {
@@ -92,7 +99,7 @@ pipeline {
         }
 
         // =====================================================
-        // 3. SONARQUBE
+        // 4. SONARQUBE
         // =====================================================
 
         stage('SonarQube Scan') {
@@ -125,7 +132,7 @@ pipeline {
         }
 
         // =====================================================
-        // 4. TRIVY FILESYSTEM SCAN
+        // 5. TRIVY FILESYSTEM SCAN
         // =====================================================
 
         stage('Trivy Filesystem Scan') {
@@ -154,7 +161,7 @@ pipeline {
         }
 
         // =====================================================
-        // 5. DOCKER BUILD
+        // 6. DOCKER BUILD
         // =====================================================
 
         stage('Docker Build') {
@@ -170,7 +177,7 @@ pipeline {
         }
 
         // =====================================================
-        // 6. TRIVY IMAGE SCAN
+        // 7. TRIVY IMAGE SCAN
         // =====================================================
 
         stage('Trivy Image Scan') {
@@ -199,7 +206,7 @@ pipeline {
         }
 
         // =====================================================
-        // 7. OWASP ZAP
+        // 8. OWASP ZAP
         // =====================================================
 
         stage('OWASP ZAP Scan') {
@@ -252,7 +259,7 @@ pipeline {
         }
 
         // =====================================================
-        // 8.DOCKER PUSH
+        // 9. DOCKER PUSH
         // =====================================================
 
         stage('Docker Push') {
@@ -292,45 +299,25 @@ pipeline {
         }
 
         // =====================================================
-        // 9. GITOPS - UPDATE HELM VALUES
+        // 10. TRIGGER CD
         // =====================================================
 
-        stage('Update Helm Image Tag') {
-         steps {
-            withCredentials([
-            usernamePassword(
-                credentialsId: 'github-creds',
-                usernameVariable: 'GIT_USER',
-                passwordVariable: 'GIT_TOKEN'
-                    )
-                 ]) {
-            sh '''
-                set -e
+        stage('Trigger CD') {
+            steps {
 
-                echo "Updating Helm image tag to: ${IMAGE_TAG}"
-
-                git config user.email "jenkins-bot@hotstar.local"
-                git config user.name "jenkins-bot"
-
-                git fetch origin main
-                git checkout -B main origin/main
-
-                yq -y -i ".image.tag = \"${IMAGE_TAG}\"" ${HELM_DIR}/values.yaml
-
-                echo "Updated values.yaml:"
-                cat ${HELM_DIR}/values.yaml
-
-                git add ${HELM_DIR}/values.yaml
-                git commit -m "Update Hotstar image to ${IMAGE_TAG} [skip ci]" || echo "No changes to commit"
-
-                git push https://${GIT_USER}:${GIT_TOKEN}@github.com/Shubham81772532/Capstone-DevSecOps.git HEAD:main
-              '''
-               }
-              }
+                build job: 'Hotstar-CD',
+                    parameters: [
+                        string(
+                            name: 'IMAGE_TAG',
+                            value: "${IMAGE_TAG}"
+                        )
+                    ],
+                    wait: false
             }
+        }
 
         // =====================================================
-        // 10. CLEANUP
+        // 11. CLEANUP
         // =====================================================
 
         stage('Cleanup') {
@@ -351,55 +338,56 @@ pipeline {
 
     post {
 
-    success {
-        echo """
-        ==========================================
-        HOTSTAR CI PIPELINE SUCCESS
-        ==========================================
-        
-        Image:
-        ${IMAGE_NAME}:${IMAGE_TAG}
-        
-        Build ✓
-        Test ✓
-        SonarQube ✓
-        Trivy ✓
-        Docker Build ✓
-        OWASP ZAP ✓
-        Docker Push ✓
-        Helm values updated ✓
-        GitHub updated ✓
-        
-        ==========================================
-        """
+        success {
 
-        slackSend(
-            channel: '#all-capstone-hotstar',
-            color: 'good',
-            message: "✅ SUCCESS: ${JOB_NAME} #${BUILD_NUMBER}\nImage: ${IMAGE_NAME}:${IMAGE_TAG}"
-        )
+            echo """
+            ==========================================
+            HOTSTAR CI PIPELINE SUCCESS
+            ==========================================
+
+            Image:
+            ${IMAGE_NAME}:${IMAGE_TAG}
+
+            Build ✓
+            Test ✓
+            SonarQube ✓
+            Trivy ✓
+            Docker Build ✓
+            OWASP ZAP ✓
+            Docker Push ✓
+            CD Triggered ✓
+
+            ==========================================
+            """
+
+            slackSend(
+                channel: '#all-capstone-hotstar',
+                color: 'good',
+                message: "✅ CI SUCCESS: ${JOB_NAME} #${BUILD_NUMBER}\nImage: ${IMAGE_NAME}:${IMAGE_TAG}\nCD Triggered"
+            )
+        }
+
+        failure {
+
+            echo """
+            ===========================================
+            HOTSTAR CI PIPELINE FAILED
+            ===========================================
+
+            Check the Jenkins console output.
+
+            ===========================================
+            """
+
+            slackSend(
+                channel: '#all-capstone-hotstar',
+                color: 'danger',
+                message: "❌ CI FAILED: ${JOB_NAME} #${BUILD_NUMBER}\nCheck Jenkins: ${BUILD_URL}"
+            )
+        }
+
+        always {
+            cleanWs()
+        }
     }
-
-    failure {
-        echo """
-        ===========================================
-        HOTSTAR CI PIPELINE FAILED
-        ===========================================
-        
-        Check the Jenkins console output.
-        
-        ===========================================
-        """
-
-        slackSend(
-            channel: '#all-capstone-hotstar',
-            color: 'danger',
-            message: "❌ FAILED: ${JOB_NAME} #${BUILD_NUMBER}\nCheck Jenkins: ${BUILD_URL}"
-        )
-    }
-
-    always {
-        cleanWs()
-    }
-  }
 }
