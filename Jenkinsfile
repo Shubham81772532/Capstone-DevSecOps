@@ -138,7 +138,7 @@ pipeline {
         stage('Trivy Filesystem Scan') {
             steps {
 
-                sh '''
+                sh """
                     mkdir -p trivy-reports
 
                     trivy fs \
@@ -146,7 +146,7 @@ pipeline {
                     --exit-code 0 \
                     -o trivy-reports/fs-report.txt \
                     ${APP_DIR}
-                '''
+                """
             }
 
             post {
@@ -239,10 +239,10 @@ pipeline {
 
                 always {
 
-                    sh '''
+                    sh """
                         docker stop zap-target || true
                         docker rm zap-target || true
-                    '''
+                    """
 
                     publishHTML(
                         target: [
@@ -275,7 +275,7 @@ pipeline {
                         )
                     ]) {
 
-                        sh '''
+                        sh """
                             echo "$DOCKER_PASS" | \
                             docker login \
                             -u "$DOCKER_USER" \
@@ -292,7 +292,7 @@ pipeline {
                             ${IMAGE_NAME}:latest
 
                             docker logout
-                        '''
+                        """ 
                     }
                 }
             }
@@ -323,11 +323,11 @@ pipeline {
         stage('Cleanup') {
             steps {
 
-                sh '''
+                sh """
                     docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true
                     docker rmi ${IMAGE_NAME}:latest || true
                     docker image prune -f
-                '''
+                """
             }
         }
     }
