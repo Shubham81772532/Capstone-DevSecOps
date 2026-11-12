@@ -9,7 +9,7 @@ module "eks" {
   subnet_ids = var.subnet_ids
 
   endpoint_public_access  = true
-  endpoint_private_access = false
+  endpoint_private_access = true
 
   authentication_mode = "API_AND_CONFIG_MAP"
 

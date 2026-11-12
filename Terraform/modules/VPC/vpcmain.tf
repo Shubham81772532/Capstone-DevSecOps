@@ -4,7 +4,8 @@ resource "aws_vpc" "hotstar_vpc" {
   enable_dns_support   = true
 
   tags = {
-    Name = "hotstar-vpc"
+   Name                                        = "hotstar-vpc"
+   "kubernetes.io/cluster/${var.cluster_name}" = "shared"
   }
 }
 
@@ -19,7 +20,9 @@ resource "aws_subnet" "public_subnet" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "public-subnet-${count.index + 1}"
+    Name                                        = "public-subnet-${count.index + 1}"
+    "kubernetes.io/role/elb"                    = "1"
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
   }
 }
 
@@ -52,8 +55,7 @@ resource "aws_internet_gateway" "igw" {
 }
 
 # =====================================================
-# NAT Gateway (Disabled for Learning)
-# Uncomment these resources when using private subnets.
+# NAT Gateway (enable for Learning)
 # =====================================================
 
 resource "aws_eip" "nat_eip" {
@@ -94,7 +96,7 @@ resource "aws_route_table" "public_rt" {
 }
 
 # =====================================================
-# Private Route Table (Disabled)
+# Private Route Table (enabled)
 # Uncomment when NAT Gateway is enabled.
 # =====================================================
 
@@ -122,7 +124,7 @@ resource "aws_route_table_association" "public_assoc" {
 }
 
 # =====================================================
-# Private Route Table Association (Disabled)
+# Private Route Table Association (Enabled)
 # Uncomment when NAT Gateway is enabled.
 # =====================================================
 

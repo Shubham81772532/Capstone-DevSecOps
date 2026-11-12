@@ -3,7 +3,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 6.52.0"
+      version = "~> 6.59.0"
     }
   }
 }
@@ -23,12 +23,15 @@ resource "aws_instance" "hotstar_ec2" {
   root_block_device {
     volume_size = 29
     volume_type = "gp3"
+    encrypted   = true
+
   }
+  monitoring = true
 
   tags = {
     Name = "hotstar-ec2"
   }
-}
+  }
 
 # ----------------------------
 # Elastic IP

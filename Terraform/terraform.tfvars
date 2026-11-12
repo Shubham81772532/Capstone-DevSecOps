@@ -12,7 +12,7 @@ instance_type = "t3.large"
 key_name      = "hostar-key"
 
 cluster_name       = "hotstar-eks"
-kubernetes_version = "1.33"
+kubernetes_version = "1.36"
 
 eks_instance_types = ["t3.medium"]
 
