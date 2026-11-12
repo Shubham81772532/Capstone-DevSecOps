@@ -1,6 +1,6 @@
 apiVersion: v2
 name: hotstar
-description: Hotstar Clone Application
+description: Hotstar DevSecOps Helm Chart
 type: application
-version: 0.1.0
-appVersion: "1.0"
+version: 1.0.0
+appVersion: "7"

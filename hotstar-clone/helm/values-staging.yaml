@@ -1,0 +1,19 @@
+replicaCount: 2
+
+ingress:
+  enabled: true
+  host: hotstar-staging.local
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

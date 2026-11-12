@@ -6,7 +6,7 @@ grafana:
     passwordKey: admin-password
 
   service:
-    type: LoadBalancer
+    type: ClusterIP
 
   persistence:
     enabled: true

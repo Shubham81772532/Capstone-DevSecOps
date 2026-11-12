@@ -262,41 +262,40 @@ pipeline {
         // 9. DOCKER PUSH
         // =====================================================
 
-        stage('Docker Push') {
-            steps {
+        
+    stage('Docker Push') {
+        steps {
+            retry(2) {
+             withCredentials([
+                usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )
+            ]) {
+                sh '''
+                    set +x
+                    set -e
 
-                retry(2) {
+                    trap 'docker logout >/dev/null 2>&1 || true' EXIT
 
-                    withCredentials([
-                        usernamePassword(
-                            credentialsId: 'dockerhub-creds',
-                            usernameVariable: 'DOCKER_USER',
-                            passwordVariable: 'DOCKER_PASS'
-                        )
-                    ]) {
+                    echo "$DOCKER_PASS" | docker login \
+                        -u "$DOCKER_USER" \
+                        --password-stdin
 
-                        sh """
-                            echo "$DOCKER_PASS" | \
-                            docker login \
-                            -u "$DOCKER_USER" \
-                            --password-stdin
+                    docker push "${IMAGE_NAME}:${IMAGE_TAG}"
 
-                            docker push \
-                            ${IMAGE_NAME}:${IMAGE_TAG}
+                    docker tag \
+                        "${IMAGE_NAME}:${IMAGE_TAG}" \
+                        "${IMAGE_NAME}:latest"
 
-                            docker tag \
-                            ${IMAGE_NAME}:${IMAGE_TAG} \
-                            ${IMAGE_NAME}:latest
-
-                            docker push \
-                            ${IMAGE_NAME}:latest
-
-                            docker logout
-                        """ 
-                    }
+                    docker push "${IMAGE_NAME}:latest"
+                '''
                 }
             }
         }
+    }
+
 
         // =====================================================
         // 10. TRIGGER CD
