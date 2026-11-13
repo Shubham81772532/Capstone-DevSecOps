@@ -12,11 +12,9 @@
     - { role: kubectl,         tags: ["kubectl"] }
     - { role: helm,            tags: ["helm"] }
     - { role: npm,             tags: ["npm"] }
-
+    
     #Kubernetes Components
-    - { role: ingress-nginx,   tags: ["ingress"] }
-    - { role: metrics-server,  tags: ["metrics"] }
-    - { role: monitoring,      tags: ["monitoring"] }
+
     - { role: argocd,          tags: ["argocd"] }
 
     # Verification
